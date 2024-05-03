@@ -38,6 +38,7 @@ total_missleLaunchers = 0
 missleLaunchers_name = "missleLauncher"
 misslesLaunchers_spawn = 0
 missleLauncher_can_spawn = True
+newid = 0
 
 pygame.display.set_caption("Block Jumper")
 blockJumperIcon = pygame.image.load("blockJumperIcon.png")
@@ -510,6 +511,7 @@ class MissleLauncher():
             self.currentBarrel = pygame.transform.rotate(self.currentBarrel, current_angle)
     
     def shoot_missle(self):
+        global newid
         global total_missles
         global missles_name
         global missles
@@ -519,7 +521,8 @@ class MissleLauncher():
                 missles.append(exec("%s = None" % (missles_name)))
                 for i in range(len(missles)):
                     if missles[i] == None:
-                        missles[i] = Missles(self.x_pos + 75, self.y_pos + 35, "green", 20, 20, 0, 0, total_missles + 1)
+                        missles[i] = Missles(self.x_pos + 75, self.y_pos + 35, "green", 20, 20, 0, 0, newid)
+                        newid = newid + 1
                         self.ammo = self.ammo - 1
                 self.shooting_cooldown = 100
                 total_missles = total_missles + 1
@@ -647,8 +650,6 @@ def update_texts():
 
 def update_missles():
     for item in missles:
-        print(total_missles)
-        #print(item.id)
         item.draw()
         item.update_pos()
         item.track_player()
@@ -659,10 +660,10 @@ def update_missleLaunchers():
     global total_missleLaunchers
     global misslesLaunchers_spawn
     global missleLauncher_can_spawn
-    if(score % 2 == 0 and score > 0 and missleLauncher_can_spawn == True):
+    if(score % 6 == 0 and score > 0 and missleLauncher_can_spawn == True):
         missleLauncher_can_spawn = False
         misslesLaunchers_spawn = 1
-    elif(score % 2 != 0):
+    elif(score % 6 != 0):
         missleLauncher_can_spawn = True
     if(misslesLaunchers_spawn == 1):
         missleLaunchers_name = "missleLauncher" + str(total_missleLaunchers)
@@ -691,10 +692,12 @@ def update_missleLaunchers():
 
 def update_lives():
     global lives
+    global newid
     if lives <= 0:
         screen.blit(emptyLive, (screen_size[0] - 175, 5))
         screen.blit(emptyLive, (screen_size[0] - 115, 5))
         screen.blit(emptyLive, (screen_size[0] - 55, 5))
+        newid = 0
         end_game()
     elif lives == 1:
         screen.blit(emptyLive, (screen_size[0] - 175, 5))

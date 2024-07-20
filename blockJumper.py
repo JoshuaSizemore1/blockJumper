@@ -3,6 +3,7 @@ import pygame
 import random
 import os
 import math
+import threading
 present_working_directory = os.getcwd()
 
 #initiallising pygame 
@@ -68,8 +69,7 @@ os.chdir(path)
 
 new_path = os.path.realpath("missleLauncherSprits")
 os.chdir(new_path)
-missleLauncherSpritsRight = [pygame.image.load("1.png"), pygame.image.load("missleLauncherBarrel1Right.png"),pygame.image.load("missleLauncherBarrel2Right.png"),pygame.image.load("missleLauncherBarrel3Right.png"),pygame.image.load("missleLauncherBarrel4Right.png"),pygame.image.load("missleLauncherBarrel5Right.png")]
-missleLauncherSpritsLeft = [pygame.image.load("1.png"), pygame.image.load("missleLauncherBarrel1Left.png"),pygame.image.load("missleLauncherBarrel2Left.png"),pygame.image.load("missleLauncherBarrel3Left.png"),pygame.image.load("missleLauncherBarrel4Left.png"),pygame.image.load("missleLauncherBarrel5Left.png")]
+missleLauncherSprits = [pygame.image.load("missleLauncherBody.png")]
 os.chdir(present_working_directory)
 
 #Defining all classes, and class functions
@@ -470,45 +470,29 @@ class Missles():
 class MissleLauncher():
     def __init__(self, point, y_pos, images, id):
         self.point = point
-        if(point == 1):
-            self.x_pos = -5
-        else:
-            self.x_pos = 950
         self.y_pos = y_pos
         self.images = images
         self.body = self.images[0]
-        self.barrel1 = self.images[1]
-        self.barrel2 = self.images[2]
-        self.barrel3 = self.images[3]
-        self.barrel4 = self.images[4]
-        self.barrel5 = self.images[5]
-        self.currentBarrel = self.barrel1
+        if(self.point == 1):
+            self.x_pos = -5
+            self.x_offset = self.x_pos + 75
+            self.smoke_direction = -0.1
+        else:
+            self.x_pos = 925
+            self.body = pygame.transform.rotate(self.images[0], 180).convert_alpha()
+            self.x_offset = self.x_pos - 20
+            self.smoke_direction = 0.1
         self.ammo = 1
         self.is_shooting = False
         self.shooting_cooldown = 100
         self.animation_cooldown = 0
         self.id = id
         self.rect = pygame.Rect(self.x_pos, self.y_pos, 50, 50)
-    
-    def launcher_barrel_animation(self):
-        if(self.is_shooting == True):
-            self.currentBarrel = self.barrel2
-            self.animation_cooldown = 10
 
     def draw(self):
-        #make it so that there is a  left and right launcher ssprit so  that 1 = r sprits, and 2 = l sprits
         screen.blit(self.body, (self.x_pos, self.y_pos))
-        """if self.point == 1:
-            screen.blit(self.currentBarrel, (self.x_pos, self.y_pos))
-        else:
-            screen.blit(self.currentBarrel, (self.x_pos - 25, self.y_pos))"""
 
     
-
-    def track_player(self):
-        if player1.x_pos != 0:
-            current_angle = math.atan(((self.y_pos - player1.y_pos) / (self.x_pos - player1.x_pos)))
-            self.currentBarrel = pygame.transform.rotate(self.currentBarrel, current_angle)
     
     def shoot_missle(self):
         global newid
@@ -517,6 +501,7 @@ class MissleLauncher():
         global missles
         missles_name = "missle" + str(total_missles + 1)
         if self.ammo > 0:
+
             if self.shooting_cooldown == 0:
                 missles.append(exec("%s = None" % (missles_name)))
                 for i in range(len(missles)):
@@ -526,10 +511,109 @@ class MissleLauncher():
                         self.ammo = self.ammo - 1
                 self.shooting_cooldown = 100
                 total_missles = total_missles + 1
+
+                particleEffects_name = "Missle_" + str(self.id) + "_smoke"
+                particleEffects.append(exec("%s = None" % (particleEffects_name)))
+                for i in range(len(particleEffects)):
+                    if particleEffects[i] == None:
+                        particleEffects[i] = ParticleEffect((particleEffects_name + "_"), self.x_offset, (self.y_pos + 15), [[211, 211, 211, 255], [128, 128, 128, 255]], "cicle", 10, 10, 51, False, self.smoke_direction, 20, "fade", "round(random.uniform(-1,0.7),1)", "round(random.uniform(0.5,1),1)", "round(random.uniform(0.5,1.5),1)", 0)
+            
             else:
                 self.shooting_cooldown = self.shooting_cooldown - 1
 
 
+class Particle():
+    def __init__(self, x_pos, y_pos, color, shape, width, heigth, gravity, x_speed, effect, y_direction, x_speed_cap, y_speed_cap, id):
+        self.x_pos = x_pos
+        self.y_pos = y_pos
+        self.color = color
+        self.shape = shape
+        self.width = width
+        self.heigth = heigth
+        self.gravity = gravity
+        self.x_speed = x_speed
+        self.effect = effect
+        self.y_speed = eval(y_direction)
+        self.x_vol = 0
+        self.y_vol = 0
+        self.x_speed_cap = eval(x_speed_cap)
+        self.y_speed_cap = eval(y_speed_cap)
+        self.color_tup = tuple(self.color)
+        self.id = id
+
+    def draw(self):
+        #particle_surface = pygame.Surface((self.width, self.heigth), pygame.SRCALPHA)
+        pygame.draw.circle(screen, self.color_tup, (self.x_pos, self.y_pos), (self.width/2))
+    
+    def update_pos(self):
+        if self.gravity == True:
+            pass
+        else:
+            if abs(self.x_vol) < self.x_speed_cap:
+                self.x_vol = self.x_vol + self.x_speed
+            if abs(self.y_vol) < self.y_speed_cap:
+                self.y_vol = self.y_vol + self.y_speed
+            
+        self.x_pos = self.x_pos + self.x_vol
+        self.y_pos = self.y_pos + self.y_vol
+    
+    def check_effect(self):
+        if self.effect == "fade":
+            fade_speed = 5
+            if self.color[3] > 0:
+                if (self.color[3] - fade_speed) <= 0:
+                    self.color[3] = 0
+                else:
+                    self.color[3] = self.color[3] - fade_speed
+                self.color_tup = tuple(self.color)
+
+
+
+class ParticleEffect():
+    def __init__(self, particle_name, starting_x_pos, starting_y_pos, colors, shape, width, heigth, duration, gravity, speed, amount, effect, y_direction, x_speed_cap, y_speed_cap, id):
+        self.particle_name = particle_name
+        self.starting_x_pos = starting_x_pos
+        self.starting_y_pos = starting_y_pos
+        self.colors = colors
+        self.shape = shape
+        self.width = width
+        self.heigth = heigth
+        self.duration = duration
+        self.gravity = gravity
+        self.speed = speed
+        self.amount = amount
+        self.effect = effect
+        self.new_particle_name = ""
+        self.particles = []
+        self.y_direction = y_direction
+        self.x_speed_cap = x_speed_cap
+        self.y_speed_cap = y_speed_cap
+        self.id = id
+        self.particles_made = False
+    
+    def draw_particles(self):
+        for particle in self.particles:
+            particle.draw()
+
+    def update_particles(self):
+        global particleEffects
+        if self.duration > 0:
+            for particle in self.particles:
+                particle.check_effect()
+                particle.update_pos()
+            self.duration = self.duration - 1
+        else:
+            del particleEffects[self.id]
+
+    def create_particles(self):
+        if self.particles_made == False:
+            for i in range(self.amount):
+                self.new_particle_name = self.particle_name + str(i)
+                self.particles.append(exec("%s = None" % (self.new_particle_name)))
+                for i in range(len(self.particles)):
+                    if self.particles[i] == None:
+                        self.particles[i] = Particle(self.starting_x_pos, self.starting_y_pos, self.colors[random.randint(0,(len(self.colors)-1))], self.shape, self.width, self.heigth, self.gravity, self.speed, self.effect, self.y_direction, self.x_speed_cap, self.y_speed_cap, i)
+            self.particles_made = True
 
 def end_game():
     global running
@@ -666,6 +750,7 @@ def update_missleLaunchers():
     elif(score % 6 != 0):
         missleLauncher_can_spawn = True
     if(misslesLaunchers_spawn == 1):
+
         missleLaunchers_name = "missleLauncher" + str(total_missleLaunchers)
         missleLaunchers.append(exec("%s = None" % (missleLaunchers_name)))
         for i in range(len(missleLaunchers)):
@@ -677,18 +762,18 @@ def update_missleLaunchers():
                         while not spawn_y_pos <= missleLaunchers[i].y_pos - 40 or spawn_y_pos >= missleLaunchers[i].y_pos + 40:
                             spawn_y_pos = random.randint(100,400)"""
                 if(random.randint(1,2) == 1):
-                    missleLaunchers[i] = MissleLauncher(1, spawn_y_pos, missleLauncherSpritsRight, total_missleLaunchers)
+                    missleLaunchers[i] = MissleLauncher(1, spawn_y_pos, missleLauncherSprits, total_missleLaunchers)
                 else:
-                    missleLaunchers[i] = MissleLauncher(2, spawn_y_pos, missleLauncherSpritsLeft, total_missleLaunchers)
+                    missleLaunchers[i] = MissleLauncher(2, spawn_y_pos, missleLauncherSprits, total_missleLaunchers)
+        
+
         total_missleLaunchers = total_missleLaunchers + 1
         misslesLaunchers_spawn = 0
             
     if(len(missleLaunchers) > 0):
         for item in missleLaunchers:
             item.shoot_missle()
-            #item.track_player()
             item.draw()
-            item.launcher_barrel_animation()
 
 def update_lives():
     global lives
@@ -718,6 +803,11 @@ def update_enemey_count():
     total_missles = len(missles)
     total_missleLaunchers = len(missleLaunchers)
 
+def update_particle_effects():
+    for item in particleEffects:
+        item.create_particles()
+        item.update_particles()
+        item.draw_particles()
 
 #Creating the player and assigning it the the Player class
 player1 = Player(700, 200, "black", 50, 50, 0, 0, 1)
@@ -759,6 +849,9 @@ mouse = Mouse(pygame.mouse.get_pos()[0], pygame.mouse.get_pos()[0])
 text1 = Text("Score: " + str(score), None, (255, 0, 0), (0 + wall_thickness), (0 + wall_thickness), 1)
 texts = [text1]
 
+particleEffects = []
+
+#Y-direction for smoke behind,,,, random.randint(-1,1)
 #Main while loop that runs that game
 
 
@@ -801,6 +894,7 @@ def runGame():
         update_lives()
         screen_size[0], screen_size[1] = screen.get_size()
         update_enemey_count()
-        #update_buttons()
+        if len(particleEffects) > 0:
+            update_particle_effects()
         #Displays the screen so that the user can see it.
         pygame.display.flip()
